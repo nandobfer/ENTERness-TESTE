@@ -23,4 +23,8 @@ export class ChatsService {
     getAll() {
         return this.chats
     }
+
+    getUserChats(user_id: string) {
+        return this.chats.filter((chat) => chat.owner.id === user_id)
+    }
 }

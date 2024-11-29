@@ -17,7 +17,7 @@ export class UsersController {
 
     @Get("username")
     checkUsername(@Query("username") username: string) {
-        if (!username) throw new HttpException("Username param is required", HttpStatus.BAD_REQUEST)
+        if (!username) throw new HttpException("username param is required", HttpStatus.BAD_REQUEST)
 
         return { valid: !this.service.findByUsername(username) }
     }
@@ -27,4 +27,5 @@ export class UsersController {
         const user = this.service.new(data)
         return user
     }
+
 }
