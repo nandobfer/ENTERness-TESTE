@@ -7,6 +7,7 @@ export class UsersService {
     private readonly users: User[] = []
 
     new(data: UserForm) {
+        console.log(data)
         const user = new User({ id: randomUUID(), status: "available", username: data.username })
         this.users.push(user)
         return user
@@ -18,5 +19,9 @@ export class UsersService {
 
     findById(id: string) {
         return this.users.find((item) => item.id === id)
+    }
+
+    findByUsername(username: string) {
+        return this.users.find((item) => item.username === username)
     }
 }
