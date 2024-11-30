@@ -15,6 +15,7 @@ export class Chat {
     owner: User
     users: User[]
 
+    lastMessage?: Message
     password?: string
 
     constructor(data: WithoutFunctions<Chat>) {
@@ -24,6 +25,7 @@ export class Chat {
         this.owner = data.owner
         this.users = data.users
         this.password = data.password
+        this.lastMessage = data.lastMessage
     }
 
     handleOwnerDisconnect() {
