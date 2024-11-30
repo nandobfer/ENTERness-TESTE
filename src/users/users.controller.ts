@@ -22,10 +22,4 @@ export class UsersController {
         return { valid: !this.service.findByUsername(username) }
     }
 
-    @Post()
-    createUser(@Body() data: UserForm) {
-        const user = this.service.new(data)
-        return user
-    }
-
 }

@@ -25,4 +25,10 @@ export class Chat {
         this.users = data.users
         this.password = data.password
     }
+
+    handleOwnerDisconnect() {
+        if (!!this.users.length) {
+            this.owner = this.users[0]
+        }
+    }
 }
