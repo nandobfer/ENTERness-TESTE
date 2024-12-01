@@ -19,7 +19,6 @@ export class UsersController {
     checkUsername(@Query("username") username: string) {
         if (!username) throw new HttpException("username param is required", HttpStatus.BAD_REQUEST)
 
-        return { valid: !this.service.findByUsername(username) }
+        return { valid: !this.service.isOnline(username) }
     }
-
 }

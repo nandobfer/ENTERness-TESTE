@@ -15,12 +15,12 @@ export class EventsGateway implements OnGatewayDisconnect {
     }
 
     handleDisconnect(client: Socket) {
-        this.users.onDisconnect(client)
+        this.users.logout(client)
     }
 
-    @SubscribeMessage("users:new")
+    @SubscribeMessage("users:login")
     handleMessage(client: Socket, data: UserForm) {
-        const user = this.users.new(data, client)
+        const user = this.users.login(data, client)
         return user
     }
 }
