@@ -37,12 +37,6 @@ export class Chat {
         this.lastMessage = data.lastMessage ? new Message(data.lastMessage) : undefined
     }
 
-    handleOwnerLeave() {
-        if (!!this.users.length) {
-            this.owner = this.users[0]
-        }
-    }
-
     async registerUser(user: User) {
         const result = await prisma.chat.update({where: {id: this.id}, data: {users: {connect: {id: user.id}}}, include: chat_prisma_include})
         this.users.push(user)

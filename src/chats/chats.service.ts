@@ -18,7 +18,7 @@ export class ChatsService {
     }
 
     async new(data: ChatForm) {
-        const owner = await this.users.find("id", data.owner_id)
+        const owner = this.users.findOnline(data.owner_id)
         if (!owner) throw new HttpException("Usuário não encontrado", HttpStatus.NOT_FOUND)
 
         const chatPrisma = await prisma.chat.create({
@@ -28,6 +28,7 @@ export class ChatsService {
         const chat = new Chat(chatPrisma)
 
         this.io.server.emit("chats:new", chat)
+        owner.socket.emit('chats:join', chat)
 
         return chat
     }
@@ -50,10 +51,37 @@ export class ChatsService {
         return result.map((item) => new Chat(item))
     }
 
-    async removeUser(data: ChatJoinForm) {
+    async removeUser(data: ChatJoinForm, new_owner?: User) {
+        const result = await prisma.chat.update({
+            where: { id: data.chat_id },
+            data: { users: { disconnect: { id: data.user_id } }, ownerId: new_owner ? new_owner.id : undefined },
+        })
+
+        return true
+    }
+
+    async deleteChat(chat_id: string) {
+        await prisma.chat.delete({ where: { id: chat_id } })
+        this.io.server.emit("chats:delete", chat_id)
+        return true
+    }
+
+    async handleUserLeave(data: ChatJoinForm) {
         const user = this.users.findOnline(data.user_id)
         user.socket.emit("chats:unjoin", data.chat_id)
-        const result = await prisma.chat.update({ where: { id: data.chat_id }, data: { users: { disconnect: { id: data.user_id } } } })
+
+        const chat = await this.find(data.chat_id)
+        if (chat.owner.id === user.id) {
+            if (!!chat.users.length) {
+                const new_owner = chat.users[0]
+                await this.removeUser({ chat_id: chat.id, user_id: new_owner.id }, new_owner)
+            } else {
+                await this.deleteChat(chat.id)
+            }
+        } else {
+            await this.removeUser(data)
+        }
+
         return true
     }
 
@@ -63,7 +91,7 @@ export class ChatsService {
         if (chat.owner.id !== data.user_id && !chat.users.find((user) => user.id === data.user_id)) {
             const user = this.users.findOnline(data.user_id)
             await chat.registerUser(user)
-            user.socket.emit("chats:new", chat)
+            user.socket.emit("chats:join", chat)
         }
     }
 }

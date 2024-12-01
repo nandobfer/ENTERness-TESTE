@@ -27,6 +27,6 @@ export class ChatsController {
 
     @Delete("user")
     async removeUserFromChat(@Query("user_id") user_id: string, @Query("chat_id") chat_id: string) {
-        return await this.service.removeUser({ user_id, chat_id })
+        return await this.service.handleUserLeave({ user_id, chat_id })
     }
 }
