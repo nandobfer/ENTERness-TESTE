@@ -29,6 +29,7 @@ export class ChatsService {
         })
         const chat = new Chat(chatPrisma)
 
+        owner.socket.join(chat.id)
         this.io.server.emit("chats:new", chat)
         owner.socket.emit("chats:join", chat)
 
