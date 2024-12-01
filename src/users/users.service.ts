@@ -40,6 +40,10 @@ export class UsersService {
         return this.online_users.find((user) => user.username === username)
     }
 
+    findOnline(id: string) {
+        return this.online_users.find((user) => user.id === id)
+    }
+
     logout(socket: Socket) {
         const index = this.online_users.findIndex((user) => user.socket.id === socket.id)
         if (index !== -1) {

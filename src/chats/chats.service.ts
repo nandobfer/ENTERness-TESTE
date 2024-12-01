@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
-import { Chat, chat_prisma_include, ChatForm } from "../class/Chat"
+import { Chat, chat_prisma_include, ChatForm, ChatJoinForm } from "../class/Chat"
 import { randomUUID } from "crypto"
 import { UsersService } from "src/users/users.service"
 import { EventsGateway } from "src/events/events.gateway"
@@ -32,13 +32,31 @@ export class ChatsService {
         return chat
     }
 
+    async find(id: string) {
+        const result = await prisma.chat.findUnique({ where: { id }, include: chat_prisma_include })
+        return new Chat(result)
+    }
+
     async getAll() {
         const result = await prisma.chat.findMany({ include: chat_prisma_include })
         return result.map((item) => new Chat(item))
     }
 
     async getUserChats(user_id: string) {
-        const result = await prisma.chat.findMany({ where: { ownerId: user_id }, include: chat_prisma_include })
+        const result = await prisma.chat.findMany({
+            where: { OR: [{ ownerId: user_id }, { users: { some: { id: user_id } } }] },
+            include: chat_prisma_include,
+        })
         return result.map((item) => new Chat(item))
+    }
+
+    @OnEvent("chat:join")
+    async handleChatJoin(data: ChatJoinForm) {
+        const chat = await this.find(data.chat_id)
+        if (chat.owner.id !== data.user_id && !chat.users.find((user) => user.id === data.user_id)) {
+            const user = this.users.findOnline(data.user_id)
+            await chat.registerUser(user)
+            user.socket.emit("chats:new", chat)
+        }
     }
 }

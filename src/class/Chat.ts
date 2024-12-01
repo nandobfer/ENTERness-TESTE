@@ -1,9 +1,15 @@
+import { prisma } from "src/prisma"
 import { Message } from "./Message"
 import { User } from "./User"
 import { Prisma } from "@prisma/client"
 
 export const chat_prisma_include = Prisma.validator<Prisma.ChatInclude>()({ users: true, messages: true, owner: true, lastMessage: true })
 export type ChatPrisma = Prisma.ChatGetPayload<{ include: typeof chat_prisma_include }>
+
+export class ChatJoinForm {
+    chat_id: string
+    user_id: string
+}
 
 export class ChatForm {
     owner_id: string
@@ -35,5 +41,10 @@ export class Chat {
         if (!!this.users.length) {
             this.owner = this.users[0]
         }
+    }
+
+    async registerUser(user: User) {
+        const result = await prisma.chat.update({where: {id: this.id}, data: {users: {connect: {id: user.id}}}, include: chat_prisma_include})
+        this.users.push(user)
     }
 }
