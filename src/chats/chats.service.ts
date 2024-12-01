@@ -50,6 +50,13 @@ export class ChatsService {
         return result.map((item) => new Chat(item))
     }
 
+    async removeUser(data: ChatJoinForm) {
+        const user = this.users.findOnline(data.user_id)
+        user.socket.emit("chats:unjoin", data.chat_id)
+        const result = await prisma.chat.update({ where: { id: data.chat_id }, data: { users: { disconnect: { id: data.user_id } } } })
+        return true
+    }
+
     @OnEvent("chat:join")
     async handleChatJoin(data: ChatJoinForm) {
         const chat = await this.find(data.chat_id)
