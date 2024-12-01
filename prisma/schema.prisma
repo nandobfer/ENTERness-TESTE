@@ -20,9 +20,7 @@ model Chat {
     id              String          @id @default(uuid())
     name            String
     password        String?
-
-    lastMessageId   String?
-    lastMessage     Message?        @relation(name: "lastMessage")
+    createdAt       String
 
     ownerId         String
     owner           User            @relation(fields: [ownerId], references: [id], onDelete: Cascade, name: "chat_owner")
@@ -35,12 +33,10 @@ model Chat {
 model Message {
     id              String          @id @default(uuid())
     body            String          @db.LongText()
+    createdAt       String
 
     chatId          String
     chat            Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
-
-    chatLastId      String          @unique
-    chatLastMessage Chat            @relation(fields: [chatLastId], references: [id], name: "lastMessage", onDelete: Cascade)
 
     userId          String
     user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)

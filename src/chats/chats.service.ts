@@ -6,6 +6,8 @@ import { EventsGateway } from "src/events/events.gateway"
 import { OnEvent } from "@nestjs/event-emitter"
 import { User } from "src/class/User"
 import { prisma } from "src/prisma"
+import { MessageForm } from "src/class/Message"
+import { Socket } from "socket.io"
 
 @Injectable()
 export class ChatsService {
@@ -22,13 +24,13 @@ export class ChatsService {
         if (!owner) throw new HttpException("Usuário não encontrado", HttpStatus.NOT_FOUND)
 
         const chatPrisma = await prisma.chat.create({
-            data: { name: data.name, ownerId: data.owner_id, password: data.password },
+            data: { name: data.name, ownerId: data.owner_id, password: data.password, createdAt: new Date().getTime().toString() },
             include: chat_prisma_include,
         })
         const chat = new Chat(chatPrisma)
 
         this.io.server.emit("chats:new", chat)
-        owner.socket.emit('chats:join', chat)
+        owner.socket.emit("chats:join", chat)
 
         return chat
     }
@@ -46,6 +48,7 @@ export class ChatsService {
     async getUserChats(user_id: string) {
         const result = await prisma.chat.findMany({
             where: { OR: [{ ownerId: user_id }, { users: { some: { id: user_id } } }] },
+            orderBy: { createdAt: "asc" },
             include: chat_prisma_include,
         })
         return result.map((item) => new Chat(item))
@@ -85,13 +88,30 @@ export class ChatsService {
         return true
     }
 
+    @OnEvent("user:login")
+    async handleUserLogin(user: User, socket: Socket) {
+        const chats = await this.getUserChats(user.id)
+        chats.forEach((chat) => {
+            socket.join(chat.id)
+        })
+    }
+
     @OnEvent("chat:join")
-    async handleChatJoin(data: ChatJoinForm) {
+    async handleChatJoin(data: ChatJoinForm, socket: Socket) {
         const chat = await this.find(data.chat_id)
         if (chat.owner.id !== data.user_id && !chat.users.find((user) => user.id === data.user_id)) {
             const user = this.users.findOnline(data.user_id)
             await chat.registerUser(user)
+            socket.join(chat.id)
             user.socket.emit("chats:join", chat)
         }
+    }
+
+    @OnEvent("chat:message")
+    async handleNewMessage(data: MessageForm, socket: Socket) {
+        const chat = await this.find(data.chat_id)
+        const message = await chat.newMessage(data)
+
+        this.io.server.to(chat.id).emit("chat:message", message)
     }
 }

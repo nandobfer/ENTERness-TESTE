@@ -24,9 +24,8 @@ export class UsersService {
         return user
     }
 
-    async getAll() {
-        const data = await prisma.user.findMany()
-        return data.map((item) => new User(item))
+    getAll() {
+        return this.online_users
     }
 
     async find(attribute: "id" | "username", value: string): Promise<User | null> {
