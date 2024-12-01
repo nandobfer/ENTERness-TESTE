@@ -56,6 +56,7 @@ export class Chat {
                 chatId: this.id,
                 userId: data.user_id,
                 createdAt: new Date().getTime().toString(),
+                authorUsername: data.username,
             },
         })
 

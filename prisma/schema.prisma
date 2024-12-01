@@ -38,6 +38,7 @@ model Message {
     chatId          String
     chat            Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
+    authorUsername  String
     userId          String
     user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
     
