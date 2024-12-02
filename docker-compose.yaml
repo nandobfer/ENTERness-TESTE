@@ -1,4 +1,4 @@
-name: enterness_test.api
+name: enterness_test_api
 
 services:
   api:
