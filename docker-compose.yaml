@@ -6,11 +6,16 @@ services:
     container_name: enterness_test.api
     environment:
       - PORT=8105
-      - DATABASE_URL=mysql://enterness:UmaSenhaMuitoForte@mysql:3306/enterness_test
+      # - DATABASE_URL=mysql://enterness:UmaSenhaMuitoForte@mysql:3306/enterness_test
+      - DB_HOST=db
+      - DB_USER=enterness
+      - DB_PASSWORD=UmaSenhaMuitoForte
+      - DB_NAME=enterness_test
+      - DB_PORT=3306
     ports:
       - "8105:8105"
     depends_on:
-      - mysql
+      - db
     restart: unless-stopped
     volumes:
       - static_volume:/app/static
@@ -20,16 +25,16 @@ services:
     #       cpus: '1.5'
     #       memory: 1512M
 
-  mysql:
-    image: mysql:5.7
-    container_name: mysql
+  db:
+    image: mariadb:latest
+    container_name: mariadb
     environment:
-      - MYSQL_DATABASE=enterness_test
-      - MYSQL_USER=enterness
-      - MYSQL_PASSWORD=UmaSenhaMuitoForte
-      - MYSQL_ROOT_PASSWORD=UmaSenhaMuitoForte
+      - MARIADB_DATABASE=enterness_test
+      - MARIADB_USER=enterness
+      - MARIADB_PASSWORD=UmaSenhaMuitoForte
+      - MARIADB_ROOT_PASSWORD=UmaSenhaMuitoForte
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mariadb-data:/var/lib/mysql
     ports:
       - "4306:3306"
     restart: unless-stopped
@@ -37,8 +42,8 @@ services:
 volumes:
   static_volume:
     name: "enterness_test_static_files"
-  mysql-data:
-    name: "enterness_test_mysql_data"
+  mariadb-data:
+    name: "enterness_test_mariadb_data"
 
 networks:
   default:

@@ -6,7 +6,7 @@ export class AppController {
     constructor(private readonly appService: AppService) {}
 
     @Get()
-    getChats() {
-        return this.appService.getHello()
+    getVersion() {
+        return this.appService.getVersion()
     }
 }

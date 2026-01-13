@@ -1,6 +1,17 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from "@nestjs/common"
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Query } from "@nestjs/common"
 import { UsersService } from "./users.service"
-import { UserForm } from "src/class/User"
+import { UserFormDto } from "./users.entity"
+import { IsEmail, IsUUID } from "class-validator"
+
+class UserQueriesDto {
+    @IsEmail()
+    email: string
+}
+
+class UserParams {
+    @IsUUID()
+    id: string
+}
 
 @Controller("users")
 export class UsersController {
@@ -15,10 +26,29 @@ export class UsersController {
         return this.service.getAll()
     }
 
-    @Get("username")
-    checkUsername(@Query("username") username: string) {
-        if (!username) throw new HttpException("username param is required", HttpStatus.BAD_REQUEST)
+    @Get("online")
+    getOnlineUsers() {
+        return this.service.getOnline()
+    }
 
-        return { valid: !this.service.isOnline(username) }
+    @Post("")
+    async createUser(@Body() data: UserFormDto) {
+        const user = await this.service.new(data)
+        return user
+    }
+
+    @Get("email")
+    checkEmail(@Query() query: UserQueriesDto) {
+        if (!query.email) throw new HttpException("email param is required", HttpStatus.BAD_REQUEST)
+
+        console.log(query.email)
+
+        return { valid: !this.service.find(query.email) }
+    }
+
+    @Get(":id")
+    async getUserById(@Param() params: UserParams) {
+        console.log(params)
+        return this.service.find(params.id)
     }
 }
