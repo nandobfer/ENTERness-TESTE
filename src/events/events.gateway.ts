@@ -38,6 +38,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     handleDisconnect(client: Socket) {
+        console.log(`Client disconnected: ${client.id}, user: ${client.data.user?.email}`)
         const loggedOutUser = this.users.online_users.find((user) => user.socket.id === client.id)
         this.users.logout(client)
         this.server.emit("user:logout", loggedOutUser?.getDto())

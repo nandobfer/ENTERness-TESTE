@@ -1,4 +1,15 @@
-import { BaseEntity, Column, CreateDateColumn, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn, Relation, UpdateDateColumn } from "typeorm"
+import {
+    BaseEntity,
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinTable,
+    ManyToMany,
+    OneToMany,
+    PrimaryGeneratedColumn,
+    Relation,
+    UpdateDateColumn,
+} from "typeorm"
 import * as bcrypt from "bcrypt"
 import { User } from "../users/users.entity"
 import { Message } from "../messages/messages.entity"
@@ -43,6 +54,7 @@ export class Room extends BaseEntity {
     password?: string
 
     @ManyToMany(() => User, (user) => user.rooms, { cascade: true })
+    @JoinTable()
     users: Relation<User>[]
 
     @OneToMany(() => Message, (message) => message.room)

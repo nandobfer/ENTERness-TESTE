@@ -6,6 +6,13 @@ import { User, UserDto } from "../users/users.entity"
 export class AuthService {
     constructor(private jwtService: JwtService) {}
 
+    async generateTokens(user: UserDto) {
+        return {
+            access_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "10s" }),
+            refresh_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "5m" }),
+        }
+    }
+
     async signIn(email: string, password: string) {
         const user = await User.findOne({ where: { email: email.toLowerCase().trim() } })
 
@@ -14,12 +21,21 @@ export class AuthService {
             if (validPassword) {
                 const payload = user.getDto()
 
-                return {
-                    access_token: await this.jwtService.signAsync<{ user: UserDto }>({ user: payload }),
-                }
+                return await this.generateTokens(payload)
             }
         }
 
         throw new UnauthorizedException("usuário ou senha inválidos")
+    }
+
+    async refreshToken(refresh_token: string) {
+        try {
+            const payload = this.jwtService.verify<{ user: UserDto }>(refresh_token)
+            const user = payload.user
+
+            return await this.generateTokens(user)
+        } catch (error) {
+            throw new UnauthorizedException("Invalid refresh token")
+        }
     }
 }
