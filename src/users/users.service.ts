@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common"
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 import { EventEmitter2, OnEvent } from "@nestjs/event-emitter"
 import { Socket } from "socket.io"
 import { User, UserFormDto } from "./users.entity"
 import * as bcrypt from "bcrypt"
+import { QueryFailedError } from "typeorm"
 
 @Injectable()
 export class UsersService {
@@ -11,10 +12,18 @@ export class UsersService {
     constructor(private eventEmitter: EventEmitter2) {}
 
     async new(data: UserFormDto) {
-        const hashedPassword = await bcrypt.hash(data.password.trim(), 10)
-        const user = User.create({ email: data.email.toLowerCase().trim(), password: hashedPassword })
-        await user.save()
-        return user
+        try {
+            const hashedPassword = await bcrypt.hash(data.password.trim(), 10)
+            const user = User.create({ email: data.email.toLowerCase().trim(), password: hashedPassword })
+            await user.save()
+            return user
+        } catch (error) {
+            console.log(error)
+            if (error instanceof QueryFailedError) {
+                console.log("aaaaaaa")
+                throw new HttpException("Email already in use", HttpStatus.FORBIDDEN)
+            }
+        }
     }
 
     async login(data: UserFormDto) {

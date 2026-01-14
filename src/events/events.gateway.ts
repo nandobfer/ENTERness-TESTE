@@ -1,19 +1,40 @@
 import { EventEmitter2 } from "@nestjs/event-emitter"
-import { OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets"
+import { OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets"
 import { Server, Socket } from "socket.io"
 import { MessageForm } from "../messages/messages.entity"
 import { RoomAndUserIdsDto } from "../rooms/rooms.entity"
 import { UsersService } from "../users/users.service"
+import { JwtService } from "@nestjs/jwt"
 
 @WebSocketGateway({ cors: { origin: "*" } })
-export class EventsGateway implements OnGatewayDisconnect {
+export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server
 
     constructor(
         private readonly users: UsersService,
-        private eventEmitter: EventEmitter2
+        private eventEmitter: EventEmitter2,
+        private jwtService: JwtService
     ) {}
+
+    handleConnection(client: Socket) {
+        try {
+            const token = client.handshake.auth?.token
+
+            if (!token) {
+                client.emit("error", "Unauthorized: No token provided")
+                client.disconnect()
+                return
+            }
+
+            const payload = this.jwtService.verify(token as string)
+            client.data.user = payload // stored user dto
+            console.log(`Client connected: ${client.id}, user: ${payload.email}`)
+        } catch (error) {
+            client.emit("error", "Unauthorized: Invalid token")
+            client.disconnect()
+        }
+    }
 
     handleDisconnect(client: Socket) {
         const loggedOutUser = this.users.online_users.find((user) => user.socket.id === client.id)

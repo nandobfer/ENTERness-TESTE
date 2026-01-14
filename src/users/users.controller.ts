@@ -34,7 +34,7 @@ export class UsersController {
     @Post("")
     async createUser(@Body() data: UserFormDto) {
         const user = await this.service.new(data)
-        return user
+        return true
     }
 
     @Get("email")

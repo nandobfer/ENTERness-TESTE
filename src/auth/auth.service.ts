@@ -20,7 +20,7 @@ export class AuthService {
             }
         }
 
-        throw new UnauthorizedException()
+        throw new UnauthorizedException("usuário ou senha inválidos")
     }
 
     
