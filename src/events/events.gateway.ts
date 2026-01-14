@@ -5,6 +5,7 @@ import { MessageForm } from "../messages/messages.entity"
 import { RoomAndUserIdsDto } from "../rooms/rooms.entity"
 import { UsersService } from "../users/users.service"
 import { JwtService } from "@nestjs/jwt"
+import { UserDto } from "../users/users.entity"
 
 @WebSocketGateway({ cors: { origin: "*" } })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -27,9 +28,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 return
             }
 
-            const payload = this.jwtService.verify(token as string)
-            client.data.user = payload // stored user dto
-            console.log(`Client connected: ${client.id}, user: ${payload.email}`)
+            const payload = this.jwtService.verify<{ user: UserDto }>(token as string)
+            client.data.user = payload.user // stored user dto
+            console.log(`Client connected: ${client.id}, user: ${payload.user.email}`)
         } catch (error) {
             client.emit("error", "Unauthorized: Invalid token")
             client.disconnect()

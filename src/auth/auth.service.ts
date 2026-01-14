@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common"
 import { JwtService } from "@nestjs/jwt"
-import { User } from "../users/users.entity"
+import { User, UserDto } from "../users/users.entity"
 
 @Injectable()
 export class AuthService {
@@ -15,13 +15,11 @@ export class AuthService {
                 const payload = user.getDto()
 
                 return {
-                    access_token: await this.jwtService.signAsync(payload),
+                    access_token: await this.jwtService.signAsync<{ user: UserDto }>({ user: payload }),
                 }
             }
         }
 
         throw new UnauthorizedException("usuário ou senha inválidos")
     }
-
-    
 }
