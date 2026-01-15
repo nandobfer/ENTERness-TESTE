@@ -11,11 +11,11 @@ const dataSource = new DataSource({
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    timezone: "Z", // Force UTC to avoid timezone conversion issues
+    timezone: "Z",
     entities: [__dirname + "/../**/*.entity{.ts,.js}"],
 
-    // migrations
-    synchronize: false,
+    // ! habilitei para que o docker compose up crie as tabelas imediatamente, de acordo com o teste. Setar como false para testar as migrations
+    synchronize: true,
     migrations: [__dirname + "/migration/**/*{.js,.ts}"],
 
     migrationsRun: false,
