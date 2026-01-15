@@ -23,26 +23,8 @@ export class UsersService {
         }
     }
 
-    async login(data: UserFormDto) {
-        const user = await User.findOne({ where: { email: data.email.toLowerCase().trim() } })
-
-        if (user) {
-            const validPassword = await user.validatePassword(data.password.trim())
-            if (validPassword) {
-                return user
-            } else {
-                throw new Error("Invalid password")
-            }
-        }
-    }
-
     async find(value: string): Promise<User> {
         return await User.findOne({ where: [{ id: value }, { email: value }], relations: { rooms: true } })
-    }
-
-    async getAll() {
-        const users = await User.find()
-        return users
     }
 
     async onSocketConnect(socket: Socket, dto: UserDto) {

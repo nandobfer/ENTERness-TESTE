@@ -92,49 +92,6 @@ describe("UsersService", () => {
         })
     })
 
-    describe("login", () => {
-        it("should return user when credentials are valid", async () => {
-            // Arrange
-            const loginData = { email: "test@example.com", password: "password123" }
-            const mockUser = {
-                id: "123",
-                email: "test@example.com",
-                validatePassword: jest.fn().mockResolvedValue(true),
-            }
-            ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
-
-            // Act
-            const result = await service.login(loginData)
-
-            // Assert
-            expect(result).toEqual(mockUser)
-            expect(mockUser.validatePassword).toHaveBeenCalledWith("password123")
-        })
-
-        it("should throw error when password is invalid", async () => {
-            // Arrange
-            const loginData = { email: "test@example.com", password: "wrongpassword" }
-            const mockUser = {
-                validatePassword: jest.fn().mockResolvedValue(false),
-            }
-            ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
-
-            // Act & Assert
-            await expect(service.login(loginData)).rejects.toThrow("Invalid password")
-        })
-
-        it("should return undefined when user not found", async () => {
-            // Arrange
-            ;(User.findOne as jest.Mock).mockResolvedValue(null)
-
-            // Act
-            const result = await service.login({ email: "notfound@example.com", password: "pass" })
-
-            // Assert
-            expect(result).toBeUndefined()
-        })
-    })
-
     describe("find", () => {
         it("should query database for specific user", async () => {
             // Arrange
@@ -150,24 +107,6 @@ describe("UsersService", () => {
                 where: [{ id: "456" }, { email: "456" }],
                 relations: { rooms: true },
             })
-        })
-    })
-
-    describe("getAll", () => {
-        it("should return all users from database", async () => {
-            // Arrange
-            const mockUsers = [
-                { id: "1", email: "user1@example.com" },
-                { id: "2", email: "user2@example.com" },
-            ]
-            ;(User.find as jest.Mock).mockResolvedValue(mockUsers)
-
-            // Act
-            const result = await service.getAll()
-
-            // Assert
-            expect(result).toEqual(mockUsers)
-            expect(User.find).toHaveBeenCalled()
         })
     })
 
