@@ -15,7 +15,7 @@ const dataSource = new DataSource({
     entities: [__dirname + "/../**/*.entity{.ts,.js}"],
 
     // migrations
-    synchronize: true,
+    synchronize: false,
     migrations: [__dirname + "/migration/**/*{.js,.ts}"],
 
     migrationsRun: false,
