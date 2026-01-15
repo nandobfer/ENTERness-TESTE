@@ -11,10 +11,11 @@ const dataSource = new DataSource({
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    timezone: "Z", // Force UTC to avoid timezone conversion issues
     entities: [__dirname + "/../**/*.entity{.ts,.js}"],
 
     // migrations
-    synchronize: false,
+    synchronize: true,
     migrations: [__dirname + "/migration/**/*{.js,.ts}"],
 
     migrationsRun: false,

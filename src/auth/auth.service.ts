@@ -8,8 +8,8 @@ export class AuthService {
 
     async generateTokens(user: UserDto) {
         return {
-            access_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "10s" }),
-            refresh_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "5m" }),
+            access_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "5m" }),
+            refresh_token: await this.jwtService.signAsync<{ user: UserDto }>({ user }, { expiresIn: "1h" }),
         }
     }
 

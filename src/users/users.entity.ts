@@ -19,6 +19,9 @@ export class UserDto {
 
     @IsEmail()
     email: string
+
+    @IsNotEmpty()
+    username: string
 }
 
 @Entity()
@@ -54,6 +57,7 @@ export class User extends BaseEntity {
         return {
             id: this.id,
             email: this.email,
+            username: this.email.split("@")[0],
         }
     }
 

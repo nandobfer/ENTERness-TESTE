@@ -1,34 +1,24 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 import { EventsGateway } from "../events/events.gateway"
-import { Room, RoomFormDto, RoomAndUserIdsDto } from "./rooms.entity"
+import { Room, RoomFormDto, JoinRoomDto } from "./rooms.entity"
 import { UsersService } from "../users/users.service"
-import { OnEvent } from "@nestjs/event-emitter"
+import { EventEmitter2, OnEvent } from "@nestjs/event-emitter"
 import { Socket } from "socket.io"
 import { Message, MessageForm } from "../messages/messages.entity"
+import * as bcrypt from "bcrypt"
 
 @Injectable()
 export class RoomsService {
     private readonly users: UsersService
     private readonly io: EventsGateway
 
-    constructor(eventsGateway: EventsGateway) {
+    constructor(
+        eventsGateway: EventsGateway,
+        usersService: UsersService,
+        private eventEmitter: EventEmitter2
+    ) {
         this.io = eventsGateway
-    }
-
-    async new(data: RoomFormDto) {
-        const user = await this.users.find(data.user_id)
-
-        if (!user) {
-            throw new HttpException("User not online", HttpStatus.NOT_FOUND)
-        }
-
-        const room = Room.create({ name: data.name, password: data.password, users: [user] })
-        await room.save()
-
-        user.socket?.join(room.id)
-        this.io.server.emit("rooms:new", room.getDto())
-
-        return room
+        this.users = usersService
     }
 
     async find(id: string) {
@@ -41,8 +31,39 @@ export class RoomsService {
         return rooms
     }
 
+    countConnectedUsers(roomId: string) {
+        const room = this.io.server.sockets.adapter.rooms.get(roomId)
+        return room ? room.size : 0
+    }
+
+    @OnEvent("room:new")
+    async handleNewRoom(socket: Socket, data: RoomFormDto) {
+        const user = await this.users.find(data.user_id)
+
+        if (!user) {
+            throw new HttpException("User not online", HttpStatus.NOT_FOUND)
+        }
+
+        if (data.password) {
+            data.password = await bcrypt.hash(data.password, 10)
+        }
+
+        const room = Room.create({ name: data.name, password: data.password, users: [user] })
+        await room.save()
+        const roomDto = await room.getDto()
+
+        socket.join(room.id)
+        socket.data.rooms.add(room.id)
+        socket.broadcast.emit("rooms:new", roomDto)
+        if (socket) {
+            console.log("enviado para todos")
+        }
+
+        return { room: roomDto }
+    }
+
     @OnEvent("room:join")
-    async handleRoomJoin(socket: Socket, data: RoomAndUserIdsDto, ack?: Function) {
+    async handleRoomJoin(socket: Socket, data: JoinRoomDto) {
         const room = await this.find(data.room_id)
         const user = await this.users.find(data.user_id)
 
@@ -54,17 +75,20 @@ export class RoomsService {
             throw new HttpException("User not online", HttpStatus.NOT_FOUND)
         }
 
-        socket.join(room.id)
+        if (!(await room.validatePassword(data.password))) {
+            return { error: "senha inválida" }
+        }
+
         room.users.push(user)
         await room.save()
-
-        ack?.()
-        socket.broadcast.to(room.id).emit("room:join", user.getDto())
-        this.io.server.to(room.id).emit("room:users", room.users.length)
+        socket.join(room.id)
+        socket.data.rooms.add(room.id)
+        this.eventEmitter.emit("room:emit-online", room.id)
+        return { room: await room.getDto() }
     }
 
     @OnEvent("room:leave")
-    async handleRoomLeave(socket: Socket, data: RoomAndUserIdsDto, ack?: Function) {
+    async handleRoomLeave(socket: Socket, data: JoinRoomDto) {
         const room = await this.find(data.room_id)
         const user = await this.users.find(data.user_id)
 
@@ -76,24 +100,22 @@ export class RoomsService {
             throw new HttpException("User not online", HttpStatus.NOT_FOUND)
         }
 
-        
         room.users = room.users.filter((u) => u.id !== user.id)
         await room.save()
 
-        ack?.()
-        socket.broadcast.to(room.id).emit("room:leave", user.getDto())
         socket.leave(room.id)
-        this.io.server.to(room.id).emit("room:users", room.users.length)
-
+        socket.data.rooms.delete(room.id)
+        this.eventEmitter.emit("room:emit-online", room.id)
+        return { room: await room.getDto() }
     }
 
     @OnEvent("room:message")
-    async handleMessage(socket: Socket, data: MessageForm, ack: Function) {
+    async handleMessage(socket: Socket, data: MessageForm) {
         const room = await this.find(data.roomId)
         const user = await this.users.find(data.authorId)
         const message = Message.create({ content: data.content, author: user, room: room })
         await message.save()
-        ack()
-        socket.broadcast.to(room.id).emit("room:message", message)
+        socket.broadcast.to(room.id).emit("room:message", message.getDto())
+        return { message: message.getDto() }
     }
 }

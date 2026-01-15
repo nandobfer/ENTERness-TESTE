@@ -11,27 +11,30 @@ import {
     UpdateDateColumn,
 } from "typeorm"
 import * as bcrypt from "bcrypt"
-import { User } from "../users/users.entity"
-import { Message } from "../messages/messages.entity"
-import { IsNotEmpty, IsUUID } from "class-validator"
+import { User, UserDto } from "../users/users.entity"
+import { Message, MessageDto } from "../messages/messages.entity"
+import { IsNotEmpty, IsUUID, IsOptional, IsArray, IsDate, IsBoolean } from "class-validator"
 
 export class RoomFormDto {
     @IsNotEmpty()
     name: string
 
-    @IsNotEmpty()
-    password: string
+    @IsOptional()
+    password?: string
 
     @IsUUID()
     user_id: string
 }
 
-export class RoomAndUserIdsDto {
+export class JoinRoomDto {
     @IsUUID()
     room_id: string
 
     @IsUUID()
     user_id: string
+
+    @IsOptional()
+    password?: string
 }
 
 export class RoomDto {
@@ -40,6 +43,18 @@ export class RoomDto {
 
     @IsNotEmpty()
     name: string
+
+    @IsArray()
+    users: UserDto[]
+
+    @IsOptional()
+    lastMessage: MessageDto | null
+
+    @IsDate()
+    createdAt: Date
+
+    @IsBoolean()
+    isPrivate: boolean
 }
 
 @Entity()
@@ -68,18 +83,40 @@ export class Room extends BaseEntity {
 
     constructor() {
         super()
-
-        console.log(this)
     }
 
-    getDto(): RoomDto {
+    async getDto() {
+        const lastMessage = await Message.findOne({
+            where: { room: { id: this.id } },
+            order: { createdAt: "DESC" },
+            relations: { author: true },
+        })
+
+        if (lastMessage) {
+            lastMessage.room = this
+        }
+
         return {
             id: this.id,
             name: this.name,
+            users: this.users.map((user) => user.getDto()),
+            lastMessage: lastMessage ? lastMessage.getDto() : null,
+            createdAt: this.createdAt,
+            isPrivate: !!this.password,
         }
     }
 
     async validatePassword(password: string): Promise<boolean> {
-        return bcrypt.compare(password, this.password)
+        if (!this.password) return true
+
+        return await bcrypt.compare(password, this.password)
+    }
+
+    async getMessages() {
+        const messages = await Message.find({ where: { room: { id: this.id } }, relations: { author: true } })
+        for (const message of messages) {
+            message.room = this
+        }
+        return messages
     }
 }

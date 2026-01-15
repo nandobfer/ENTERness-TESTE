@@ -1,8 +1,8 @@
-import { EventEmitter2 } from "@nestjs/event-emitter"
+import { EventEmitter2, OnEvent } from "@nestjs/event-emitter"
 import { OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets"
 import { Server, Socket } from "socket.io"
 import { MessageForm } from "../messages/messages.entity"
-import { RoomAndUserIdsDto } from "../rooms/rooms.entity"
+import { JoinRoomDto, RoomFormDto } from "../rooms/rooms.entity"
 import { UsersService } from "../users/users.service"
 import { JwtService } from "@nestjs/jwt"
 import { UserDto } from "../users/users.entity"
@@ -30,7 +30,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             const payload = this.jwtService.verify<{ user: UserDto }>(token as string)
             client.data.user = payload.user // stored user dto
+            client.data.rooms = new Set<string>()
             console.log(`Client connected: ${client.id}, user: ${payload.user.email}`)
+            this.users.onSocketConnect(client, payload.user)
         } catch (error) {
             client.emit("error", "Unauthorized: Invalid token")
             client.disconnect()
@@ -39,29 +41,43 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     handleDisconnect(client: Socket) {
         console.log(`Client disconnected: ${client.id}, user: ${client.data.user?.email}`)
-        const loggedOutUser = this.users.online_users.find((user) => user.socket.id === client.id)
-        this.users.logout(client)
-        this.server.emit("user:logout", loggedOutUser?.getDto())
+        const rooms = client.data.rooms as Set<string>
+        for (const roomId of rooms) {
+            if (roomId !== client.id) {
+                this.emitConnectedUsersInRoom(roomId)
+            }
+        }
     }
 
-    @SubscribeMessage("user:login")
-    async handleUserLogin(client: Socket, userId: string, ack: Function) {
-        const user = await this.users.onLogin(client, userId, ack)
-        this.server.emit("user:login", user.getDto())
+    @SubscribeMessage("room:new")
+    async handleChatNew(client: Socket, data: RoomFormDto) {
+        return await this.eventEmitter.emitAsync("room:new", client, data).then((results) => results[0])
     }
 
     @SubscribeMessage("room:join")
-    handleChatJoin(client: Socket, data: RoomAndUserIdsDto, ack: Function) {
-        this.eventEmitter.emit("room:join", client, data, ack)
+    async handleChatJoin(client: Socket, data: JoinRoomDto) {
+        return await this.eventEmitter.emitAsync("room:join", client, data).then((results) => results[0])
     }
 
     @SubscribeMessage("room:leave")
-    handleChatLeave(client: Socket, data: RoomAndUserIdsDto, ack: Function) {
-        this.eventEmitter.emit("room:leave", client, data, ack)
+    async handleChatLeave(client: Socket, data: JoinRoomDto) {
+        return await this.eventEmitter.emitAsync("room:leave", client, data).then((results) => results[0])
     }
 
     @SubscribeMessage("room:message")
-    handleChatMessage(client: Socket, data: MessageForm, ack: Function) {
-        this.eventEmitter.emit("room:message", client, data, ack)
+    async handleChatMessage(client: Socket, data: MessageForm) {
+        return await this.eventEmitter.emitAsync("room:message", client, data).then((results) => results[0])
+    }
+
+    @OnEvent("room:emit-online")
+    handleEmitOnlineUsersInRoom(roomId: string) {
+        this.emitConnectedUsersInRoom(roomId)
+    }
+
+    private emitConnectedUsersInRoom(roomId: string) {
+        const room = this.server.sockets.adapter.rooms.get(roomId)
+        const online = room ? room.size : 0
+        console.log(`room:${roomId}:online`, online)
+        this.server.emit(`room:${roomId}:online`, online)
     }
 }

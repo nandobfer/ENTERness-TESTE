@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
 import { EventEmitter2, OnEvent } from "@nestjs/event-emitter"
 import { Socket } from "socket.io"
-import { User, UserFormDto } from "./users.entity"
+import { User, UserDto, UserFormDto } from "./users.entity"
 import * as bcrypt from "bcrypt"
 import { QueryFailedError } from "typeorm"
 
@@ -20,7 +20,6 @@ export class UsersService {
         } catch (error) {
             console.log(error)
             if (error instanceof QueryFailedError) {
-                console.log("aaaaaaa")
                 throw new HttpException("Email already in use", HttpStatus.FORBIDDEN)
             }
         }
@@ -42,7 +41,7 @@ export class UsersService {
     async find(value: string): Promise<User> {
         const user =
             this.online_users.find((user) => user.id === value || user.email === value) ||
-            (await User.findOne({ where: [{ id: value }, { email: value }] }))
+            (await User.findOne({ where: [{ id: value }, { email: value }], relations: { rooms: true } }))
         return user
     }
 
@@ -55,18 +54,12 @@ export class UsersService {
         return this.online_users.map((user) => user.getDto())
     }
 
-    logout(socket: Socket) {
-        const index = this.online_users.findIndex((user) => user.socket.id === socket.id)
-        if (index !== -1) {
-            this.online_users.splice(index, 1)
+    async onSocketConnect(socket: Socket, dto: UserDto) {
+        const user = await this.find(dto.id)
+        for (const room of user.rooms) {
+            socket.join(room.id)
+            socket.data.rooms.add(room.id)
+            this.eventEmitter.emit("room:emit-online", room.id)
         }
-    }
-
-    async onLogin(socket: Socket, userId: string, ack: Function) {
-        const user = await this.find(userId)
-        user.socket = socket
-        this.online_users.push(user)
-        ack()
-        return user
     }
 }
