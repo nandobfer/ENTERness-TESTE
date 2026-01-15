@@ -2,6 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing"
 import { UsersService } from "./users.service"
 import { User } from "./users.entity"
 import { EventEmitter2 } from "@nestjs/event-emitter"
+import { HttpException } from "@nestjs/common"
+import { QueryFailedError } from "typeorm"
 import * as bcrypt from "bcrypt"
 
 jest.mock("./users.entity")
@@ -74,6 +76,20 @@ describe("UsersService", () => {
             })
             expect(bcrypt.hash).toHaveBeenCalledWith("pass", 10)
         })
+
+        it("should throw HttpException when email already exists", async () => {
+            // Arrange
+            const userData = { email: "existing@example.com", password: "pass123" }
+            ;(bcrypt.hash as jest.Mock).mockResolvedValue("hashed")
+
+            const mockUser = {
+                save: jest.fn().mockRejectedValue(new QueryFailedError("", [], new Error("Duplicate entry"))),
+            }
+            ;(User.create as jest.Mock).mockReturnValue(mockUser)
+
+            // Act & Assert
+            await expect(service.new(userData)).rejects.toThrow(HttpException)
+        })
     })
 
     describe("login", () => {
@@ -120,20 +136,7 @@ describe("UsersService", () => {
     })
 
     describe("find", () => {
-        it("should return user from online_users if found", async () => {
-            // Arrange
-            const mockUser = { id: "123", email: "test@example.com" }
-            service.online_users.push(mockUser as any)
-
-            // Act
-            const result = await service.find("123")
-
-            // Assert
-            expect(result).toEqual(mockUser)
-            expect(User.findOne).not.toHaveBeenCalled()
-        })
-
-        it("should query database if user not in online_users", async () => {
+        it("should query database for specific user", async () => {
             // Arrange
             const mockUser = { id: "456", email: "db@example.com" }
             ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
@@ -145,6 +148,7 @@ describe("UsersService", () => {
             expect(result).toEqual(mockUser)
             expect(User.findOne).toHaveBeenCalledWith({
                 where: [{ id: "456" }, { email: "456" }],
+                relations: { rooms: true },
             })
         })
     })
@@ -167,69 +171,30 @@ describe("UsersService", () => {
         })
     })
 
-    describe("getOnline", () => {
-        it("should return DTOs of online users", () => {
+    describe("onSocketConnect", () => {
+        it("should join user to their rooms and emit online count", async () => {
             // Arrange
-            const mockUsers = [
-                { id: "1", email: "user1@example.com", getDto: jest.fn().mockReturnValue({ id: "1", email: "user1@example.com" }) },
-                { id: "2", email: "user2@example.com", getDto: jest.fn().mockReturnValue({ id: "2", email: "user2@example.com" }) },
-            ]
-            service.online_users.push(...(mockUsers as any))
-
-            // Act
-            const result = service.getOnline()
-
-            // Assert
-            expect(result).toEqual([
-                { id: "1", email: "user1@example.com" },
-                { id: "2", email: "user2@example.com" },
-            ])
-        })
-    })
-
-    describe("logout", () => {
-        it("should remove user from online_users by socket id", () => {
-            // Arrange
-            const mockSocket = { id: "socket-123" }
-            const mockUser = { id: "1", socket: mockSocket }
-            service.online_users.push(mockUser as any)
-
-            // Act
-            service.logout(mockSocket as any)
-
-            // Assert
-            expect(service.online_users).toHaveLength(0)
-        })
-
-        it("should do nothing if socket not found", () => {
-            // Arrange
-            const mockSocket = { id: "socket-123" }
-            const mockUser = { id: "1", socket: { id: "different-socket" } }
-            service.online_users.push(mockUser as any)
-
-            // Act
-            service.logout(mockSocket as any)
-
-            // Assert
-            expect(service.online_users).toHaveLength(1)
-        })
-    })
-
-    describe("onLogin", () => {
-        it("should add user to online_users and call ack", async () => {
-            // Arrange
-            const mockSocket = { id: "socket-123" }
-            const mockUser = { id: "user-123", email: "test@example.com" }
-            const mockAck = jest.fn()
+            const mockSocket = {
+                join: jest.fn(),
+                data: { rooms: new Set() },
+            }
+            const userDto = { id: "user-123", email: "test@example.com", username: "test" }
+            const mockUser = {
+                id: "user-123",
+                rooms: [{ id: "room-1" }, { id: "room-2" }],
+            }
             ;(User.findOne as jest.Mock).mockResolvedValue(mockUser)
 
             // Act
-            const result = await service.onLogin(mockSocket as any, "user-123", mockAck)
+            await service.onSocketConnect(mockSocket as any, userDto)
 
             // Assert
-            expect(result.socket).toBe(mockSocket)
-            expect(service.online_users).toContain(mockUser)
-            expect(mockAck).toHaveBeenCalled()
+            expect(mockSocket.join).toHaveBeenCalledWith("room-1")
+            expect(mockSocket.join).toHaveBeenCalledWith("room-2")
+            expect(mockSocket.data.rooms.has("room-1")).toBe(true)
+            expect(mockSocket.data.rooms.has("room-2")).toBe(true)
+            expect(mockEventEmitter.emit).toHaveBeenCalledWith("room:emit-online", "room-1")
+            expect(mockEventEmitter.emit).toHaveBeenCalledWith("room:emit-online", "room-2")
         })
     })
 })

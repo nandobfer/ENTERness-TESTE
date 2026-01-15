@@ -31,7 +31,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             const payload = this.jwtService.verify<{ user: UserDto }>(token as string)
             client.data.user = payload.user // stored user dto
             client.data.rooms = new Set<string>()
-            console.log(`Client connected: ${client.id}, user: ${payload.user.email}`)
+            // console.log(`Client connected: ${client.id}, user: ${payload.user.email}`)
             this.users.onSocketConnect(client, payload.user)
         } catch (error) {
             client.emit("error", "Unauthorized: Invalid token")
@@ -40,7 +40,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     handleDisconnect(client: Socket) {
-        console.log(`Client disconnected: ${client.id}, user: ${client.data.user?.email}`)
+        // console.log(`Client disconnected: ${client.id}, user: ${client.data.user?.email}`)
         const rooms = client.data.rooms as Set<string>
         for (const roomId of rooms) {
             if (roomId !== client.id) {
@@ -77,7 +77,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private emitConnectedUsersInRoom(roomId: string) {
         const room = this.server.sockets.adapter.rooms.get(roomId)
         const online = room ? room.size : 0
-        console.log(`room:${roomId}:online`, online)
+        // console.log(`room:${roomId}:online`, online)
         this.server.emit(`room:${roomId}:online`, online)
     }
 }

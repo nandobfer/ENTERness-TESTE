@@ -2,7 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing"
 import { RoomsService } from "./rooms.service"
 import { Room } from "./rooms.entity"
 import { EventsGateway } from "../events/events.gateway"
-import { HttpException, HttpStatus } from "@nestjs/common"
+import { UsersService } from "../users/users.service"
+import { EventEmitter2 } from "@nestjs/event-emitter"
 
 jest.mock("./rooms.entity")
 
@@ -13,12 +14,30 @@ describe("RoomsService", () => {
         server: {
             emit: jest.fn(),
             to: jest.fn().mockReturnThis(),
+            sockets: {
+                adapter: {
+                    rooms: new Map(),
+                },
+            },
         },
+    }
+
+    const mockUsersService = {
+        find: jest.fn(),
+    }
+
+    const mockEventEmitter = {
+        emit: jest.fn(),
     }
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [RoomsService, { provide: EventsGateway, useValue: mockEventsGateway }],
+            providers: [
+                RoomsService,
+                { provide: EventsGateway, useValue: mockEventsGateway },
+                { provide: UsersService, useValue: mockUsersService },
+                { provide: EventEmitter2, useValue: mockEventEmitter },
+            ],
         }).compile()
 
         service = module.get<RoomsService>(RoomsService)

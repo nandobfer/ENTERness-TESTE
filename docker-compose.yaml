@@ -1,12 +1,18 @@
 name: enterness_test_api
 
 services:
+  app:
+    image: nandoburgos/enterness_test
+    container_name: enterness_test
+    ports:
+      - "8084:8084"
+    restart: unless-stopped
+
   api:
     image: nandoburgos/enterness_test.api
     container_name: enterness_test.api
     environment:
       - PORT=8105
-      # - DATABASE_URL=mysql://enterness:UmaSenhaMuitoForte@mysql:3306/enterness_test
       - DB_HOST=db
       - DB_USER=enterness
       - DB_PASSWORD=UmaSenhaMuitoForte

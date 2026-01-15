@@ -20,7 +20,8 @@
         "test:e2e": "jest --config ./test/jest-e2e.json",
         "cptypes": "cp -r dist/types ../enterness-test-front/src",
         "migration:generate": "npx typeorm-ts-node-commonjs migration:generate -d src/db/database.providers.ts",
-        "migration:run": "npx typeorm-ts-node-commonjs migration:run -d src/db/database.providers.ts"
+        "migration:run": "npx typeorm-ts-node-commonjs migration:run -d src/db/database.providers.ts",
+        "deploy": "dockerbp nandoburgos/enterness_test.api"
     },
     "dependencies": {
         "@nestjs/common": "^10.0.0",

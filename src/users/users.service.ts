@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common"
-import { EventEmitter2, OnEvent } from "@nestjs/event-emitter"
+import { EventEmitter2 } from "@nestjs/event-emitter"
 import { Socket } from "socket.io"
 import { User, UserDto, UserFormDto } from "./users.entity"
 import * as bcrypt from "bcrypt"
@@ -7,8 +7,6 @@ import { QueryFailedError } from "typeorm"
 
 @Injectable()
 export class UsersService {
-    readonly online_users: User[] = []
-
     constructor(private eventEmitter: EventEmitter2) {}
 
     async new(data: UserFormDto) {
@@ -39,19 +37,12 @@ export class UsersService {
     }
 
     async find(value: string): Promise<User> {
-        const user =
-            this.online_users.find((user) => user.id === value || user.email === value) ||
-            (await User.findOne({ where: [{ id: value }, { email: value }], relations: { rooms: true } }))
-        return user
+        return await User.findOne({ where: [{ id: value }, { email: value }], relations: { rooms: true } })
     }
 
     async getAll() {
         const users = await User.find()
         return users
-    }
-
-    getOnline() {
-        return this.online_users.map((user) => user.getDto())
     }
 
     async onSocketConnect(socket: Socket, dto: UserDto) {
